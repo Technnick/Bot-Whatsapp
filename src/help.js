@@ -10,25 +10,24 @@ _Todos os comandos são usados com o prefixo_ .
 ┣⊱ *.pinterest* + nome do da imagem
 ┣⊱ *.tts pt* voz do google
 ┣⊱ *.toimg* marque uma figurinha
-┣⊱ *.portal* link do 🛰️PORTAL Ꮃ∆Ʀ⚔️
+┣⊱ *.portal* link 🛰️PORTAL Ꮃ∆Ʀ⚔️
 ┣⊱ *.wait* use com uma img de anime
 ┗━━━━━━━━━━━━
 
 ┏━━❉ *Apenas ADM's* ❉━━
 ┣⊱ *.war* marca todos do gp
 ┣⊱ *.admins* marca apenas os admins
-┣⊱ *.infogp* manda as informações do gp
-┣⊱ *.parceiros* "confira nossas redes..."
+┣⊱ *.infogp* informações do gp
+┣⊱ *.parceiros* redes sociais parceiras
 ┣⊱ *.add* ddi+ddd+resto
 ┣⊱ *.remover @* remove do gp
 ┣⊱ *.fechar* fecha o grupo
 ┣⊱ *.abrir* abre o grupo
-┣⊱ *.apagar* apaga a msg que o bot enviou
-┣⊱ *.promover @* da ADM para o membro
-┣⊱ *.rebaixar @* tira o ADM do sujeito
+┣⊱ *.apagar* marque a msg do bot
+┣⊱ *.promover @* da ADM ao membro
+┣⊱ *.rebaixar @* tira o ADM
 ┣⊱ *.leave* O bot sai do GP
-┗━━━━━━━━━━━━
-`
+┗━━━━━━━━━━━━`
 }
 
 exports.help = help

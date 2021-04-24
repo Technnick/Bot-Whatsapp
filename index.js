@@ -5,6 +5,8 @@ const {
     Mimetype,
     GroupSettingChange
 } = require('@adiwajshing/baileys')
+const PDFDocument = require('pdfkit')
+const url = require('url')
 const {
     color,
     bgcolor
@@ -15,6 +17,7 @@ const {
 const {
     help
 } = require('./src/help')
+const request = require('request')
 const {
     wait,
     simih,
@@ -36,11 +39,17 @@ const {
     recognize
 } = require('./lib/ocr')
 const fs = require('fs')
+const {
+    API
+} = require('nhentai-api')
+const api = new API()
 const appanime = JSON.parse(fs.readFileSync('./src/appanime.json'))
 const audionye = JSON.parse(fs.readFileSync('./src/audio.json'))
+const teste = JSON.parse(fs.readFileSync('./src/teste.json'))
 const trap = JSON.parse(fs.readFileSync('./src/trap.json'))
 const land = JSON.parse(fs.readFileSync('./src/land.json'))
 const yuri = JSON.parse(fs.readFileSync('./src/yuri.json'))
+const banned = JSON.parse(fs.readFileSync('./src/banned.json'))
 const yaoi = JSON.parse(fs.readFileSync('./src/yaoi.json'))
 const moment = require('moment-timezone')
 const {
@@ -53,6 +62,7 @@ const {
     removeBackgroundFromImageFile
 } = require('remove.bg')
 const welkom = JSON.parse(fs.readFileSync('./src/welkom.json'))
+const draw = JSON.parse(fs.readFileSync('./src/draw.json'))
 const samih = JSON.parse(fs.readFileSync('./src/simi.json'))
 prefix = '.'
 blocked = []
@@ -71,42 +81,53 @@ function kyun(seconds) {
 }
 
 function addMetadata(packname, author) {
-    if (!packname) packname = 'Bot'; if (!author) author = 'Bot';   
-    author = author.replace(/[^a-zA-Z0-9]/g, '');   
+    if (!packname) packname = 'Bot';
+    if (!author) author = 'Bot';
+    author = author.replace(/[^a-zA-Z0-9]/g, '');
     let name = `${author}_${packname}`
     if (fs.existsSync(`./src/stickers/${name}.exif`)) return `./src/stickers/${name}.exif`
-    const json = {  
+    const json = {
         "sticker-pack-name": packname,
         "sticker-pack-publisher": author,
     }
-    const littleEndian = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00])  
-    const bytes = [0x00, 0x00, 0x16, 0x00, 0x00, 0x00]  
+    const littleEndian = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00])
+    const bytes = [0x00, 0x00, 0x16, 0x00, 0x00, 0x00]
 
-    let len = JSON.stringify(json).length   
+    let len = JSON.stringify(json).length
     let last
 
-    if (len > 256) {    
-        len = len - 256 
-        bytes.unshift(0x01) 
-    } else {    
-        bytes.unshift(0x00) 
-    }   
+    if (len > 256) {
+        len = len - 256
+        bytes.unshift(0x01)
+    } else {
+        bytes.unshift(0x00)
+    }
 
-    if (len < 16) { 
-        last = len.toString(16) 
-        last = "0" + len    
-    } else {    
-        last = len.toString(16) 
-    }   
+    if (len < 16) {
+        last = len.toString(16)
+        last = "0" + len
+    } else {
+        last = len.toString(16)
+    }
 
-    const buf2 = Buffer.from(last, "hex")   
-    const buf3 = Buffer.from(bytes) 
-    const buf4 = Buffer.from(JSON.stringify(json))  
+    const buf2 = Buffer.from(last, "hex")
+    const buf3 = Buffer.from(bytes)
+    const buf4 = Buffer.from(JSON.stringify(json))
 
-    const buffer = Buffer.concat([littleEndian, buf2, buf3, buf4])  
+    const buffer = Buffer.concat([littleEndian, buf2, buf3, buf4])
 
-    fs.writeFileSync(`./src/stickers/${name}.exif`, buffer, (err) => {  
+    fs.writeFileSync(`./src/stickers/${name}.exif`, buffer, (err) => {
         return `./src/stickers/${name}.exif`
+    })
+}
+
+function download_img(uri, filename, callback){
+    ok = false
+    request.head(uri, (err, res, bd) => {
+        request(uri).pipe(fs.createWriteStream(`./tmp/nhentai/${filename}.jpg`)).on('close', () => {
+            console.log("ok")
+            callback(`./tmp/nhentai/${filename}.jpg`)
+        })
     })
 }
 
@@ -118,7 +139,7 @@ async function starts() {
         console.log(color('[', 'white'), color('!', 'red'), color(']', 'white'), color(' Scan the qr code above'))
     })
 
-    fs.existsSync('./BarBar.json') && client.loadAuthInfo('./BarBar.json')
+    fs.existsSync('./config.json') && client.loadAuthInfo('./config.json')
     client.on('connecting', () => {
         start('2', 'Connecting...')
     })
@@ -128,7 +149,7 @@ async function starts() {
     await client.connect({
         timeoutMs: 30 * 1000
     })
-    fs.writeFileSync('./BarBar.json', JSON.stringify(client.base64EncodedAuthInfo(), null, '\t'))
+    fs.writeFileSync('./config.json', JSON.stringify(client.base64EncodedAuthInfo(), null, '\t'))
 
     client.on('group-participants-update', async (anu) => {
         if (!welkom.includes(anu.jid)) return
@@ -143,9 +164,6 @@ async function starts() {
                     ppimg = 'https://i0.wp.com/www.gambarunik.id/wp-content/uploads/2019/06/Top-Gambar-Foto-Profil-Kosong-Lucu-Tergokil-.jpg'
                 }
 
-
-
-
                 teks = `_*SEJA BEM VINDO (A)!*_ @${num.split('@')[0]}\n*⚔️🛡️Ʀᴇιno Ꮃ∆Ʀ - InFoRmA:*
 
 _Para que todos possamos desfrutar de um verdadeiro grupo de entretenimento, logo abaixo temos algumas regras para manter aquele padrão que você só encontra aqui, nesse Reino MaWaRvilhoso!_
@@ -156,8 +174,8 @@ _Para que todos possamos desfrutar de um verdadeiro grupo de entretenimento, log
 _Está veemente *proibido* pornografia em qualquer um de seus âmbitos,seja foto,vídeo ou hentai._
 
 🛡️ *Lei de n°02 art.02 parágrafo segundo:*
-_*Não poderás invadir* o pv dos demais membros sem autorização prévia._
-_(Toda dúvida sobre o grupo deverá ser esclarecida por Animal,Aizen,Ackerman e Niele)_
+_*Não poderás invadir* o pv dos demais membros e adms sem autorização prévia._
+_(Toda dúvida sobre o grupo deverá ser esclarecida por Animal,Aizen,Ackerman,Niele e Nick)_
 
 🛡️ *Lei de n°03 art.03 parágrafo terceiro:*
 _*Não pode* haver qualquer tipo de discriminação ou intolerância para com os membros._
@@ -177,12 +195,22 @@ _Números fake ou de fora do Brasil só poderão entrar e/ou permanecer no grupo
 🛡️ *Lei de n°08 art.08 parágrafo oitavo:*
 _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
 
+🛡️ *Lei de n°09 art.09 parágrafo nono:*
+_Nem venham com "Compra e Venda" aqui. Quer divulgar seu trabalho? Peça permissão antes!_
+
+🛡️ *Lei de n°10 art.10 parágrafo décimo:*
+_Flood: será considerado excesso algo que seja enviado + de 5x._ _O que mais pode ocorrer é o envio de stickers, mas para *Qualquer* outra coisa essa regra será aplicada também. Se quiser "Flodar", peça autorização antes!_
+
+
 🛡️ *Lei Marcial nº1 Anti-ghosticismo, Parágrafo Único*
 
 *§1* Em caso de remoção por ghosticismo/inatividade crônica. (Ou motivo julgado em conselho) o infrator somente retornará após pagar a prenda determinada diante de consenso e gravidade decidida pelo *Conselho dos Dracos*
 
-*Anexo 1-*  _Punições Severas_ *Não haverá  janela de retorno. E Banimento em toda extensão da rede.*
+*Anexo 1-* 
+Punições Severas
+*Não haverá  janela de retorno. E Banimento em toda extensão da rede.*
 
+*༒🛡️Ʀᴇιno Ꮃ∆Ʀ - 4ЄƔЄƦ⚔️༒*
 . *${mdata.subject}*`
 
                 let buff = await getBuffer(ppimg)
@@ -219,6 +247,59 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
             blocked.push(i.replace('c.us', 's.whatsapp.net'))
         }
     })
+
+    client.on('group-participants-update', async (anu) => {
+        if (!draw.includes(anu.jid)) return
+        try {
+            const mdata = await client.groupMetadata(anu.jid)
+            console.log(anu)
+            if (anu.action == 'add') {
+                num = anu.participants[0]
+                try {
+                    ppimg = await client.getProfilePicture(`${anu.participants[0].split('@')[0]}@c.us`)
+                } catch {
+                    ppimg = 'https://i0.wp.com/www.gambarunik.id/wp-content/uploads/2019/06/Top-Gambar-Foto-Profil-Kosong-Lucu-Tergokil-.jpg'
+                }
+
+
+                teks = `_*SEJA BEM VINDO (A)!*_ @${num.split('@')[0]}
+
+ Se possível apresente-se com seu nome, idade e um desenho seu.
+
+ Temos um desafio semanal entretanto não é obrigatório participar dele, para saber mais sobre os eventos digite *.menudraw* 
+
+Qualquer dúvida marque o ADM Nick
+
+*att: ${mdata.subject}*`
+
+                let buff = await getBuffer(ppimg)
+                client.sendMessage(mdata.id, buff, MessageType.image, {
+                    caption: teks,
+                    contextInfo: {
+                        "mentionedJid": [num]
+                    }
+                })
+            } else if (anu.action == 'remove') {
+                num = anu.participants[0]
+                try {
+                    ppimg = await client.getProfilePicture(`${num.split('@')[0]}@c.us`)
+                } catch {
+                    ppimg = 'https://i0.wp.com/www.gambarunik.id/wp-content/uploads/2019/06/Top-Gambar-Foto-Profil-Kosong-Lucu-Tergokil-.jpg'
+                }
+                teks = `Saiu do Grupo 😢 @${num.split('@')[0]}`
+                let buff = await getBuffer(ppimg)
+                client.sendMessage(mdata.id, buff, MessageType.image, {
+                    caption: teks,
+                    contextInfo: {
+                        "mentionedJid": [num]
+                    }
+                })
+            }
+        } catch (e) {
+            console.log('Error : %s', color(e, 'red'))
+        }
+    })
+
 
     client.on('chat-update', async (mek) => {
         try {
@@ -275,6 +356,7 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
             const botNumber = client.user.jid
             const ownerNumber = ["558398527324@s.whatsapp.net"]
             const speed = require('performance-now')
+            const totalchat = await client.chats.all()
             const isGroup = from.endsWith('@g.us')
             const sender = isGroup ? mek.participant : mek.key.remoteJid
             const groupMetadata = isGroup ? await client.groupMetadata(from) : ''
@@ -286,6 +368,7 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
             const isGroupAdmins = groupAdmins.includes(sender) || false
             const groupDesc = isGroup ? groupMetadata.desc : ''
             const isWelkom = isGroup ? welkom.includes(from) : false
+            const isDraw = isGroup ? draw.includes(from) : false
             const isSimi = isGroup ? samih.includes(from) : false
             const isOwner = ownerNumber.includes(sender)
             const isUrl = (url) => {
@@ -314,6 +397,7 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
 
             colors = ['red', 'white', 'black', 'blue', 'yellow', 'green']
             const isMedia = (type === 'imageMessage' || type === 'videoMessage')
+            const isQuotedText = type === 'extendedTextMessage' && content.includes('textMessage')
             const isQuotedAudio = type === 'extendedTextMessage' && content.includes('audioMessage')
             const isQuotedImage = type === 'extendedTextMessage' && content.includes('imageMessage')
             const isQuotedVideo = type === 'extendedTextMessage' && content.includes('videoMessage')
@@ -325,7 +409,12 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
 
             switch (command) {
                 case 'menuwar':
-                    client.sendMessage(from, help(prefix), text)
+                    (from, help(prefix), text)
+                    buffer = fs.readFileSync(`./war.jpeg`)
+                    client.sendMessage(from, buffer, image, {
+                        quoted: mek,
+                        caption: help(".")
+                    })
                     break
                 case 'mhentai':
                 case 'menunsfw':
@@ -344,7 +433,7 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
                     let buf = await getBuffer(ppimg)
                     teks = (args.length > 1) ? body.slice(8).trim() : ''
                     teks += `${groupName}\n
-					${groupDesc}\n*Número de Administradores:* ${groupAdmins.length}\n*Número de membros:* ${groupMembers.length}`
+                    ${groupDesc}\n*Número de Administradores:* ${groupAdmins.length}\n*Número de membros:* ${groupMembers.length}`
                     no = 0
                     for (let admon of groupAdmins) {
                         no += 1
@@ -353,6 +442,20 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
                     client.sendMessage(from, buf, image, {
                         quoted: mek,
                         caption: teks
+                    })
+                    break
+
+                case 'audlist':
+                    teks = '*Lista de áudios:*\n\n'
+                    for (let awokwkwk of audionye) {
+                        teks += `- ${awokwkwk}\n`
+                    }
+                    teks += `\n*Total : ${audionye.length}*`
+                    client.sendMessage(from, teks.trim(), extendedText, {
+                        quoted: mek,
+                        contextInfo: {
+                            "mentionedJid": audionye
+                        }
                     })
                     break
 
@@ -366,60 +469,88 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
                     })
                     break
 
-                case 'trap':
-                    list_image = [];
-                    fs.readdir("./strg/image/", (erro, images) => {
-                        if (erro) {
-                            console.log("erro");
-                        }
-
-                        buffer = fs.readFileSync("./strg/image/" + images[Math.floor(Math.random() * images.length)])
-                        client.sendMessage(from, buffer, image, {
-                            mimetype: 'image/jpg',
-                            quoted: mek,
-                            ptt: true
-                        })
-                    });
-                    break
-
-                case 'gethentai':
-                    list_pdf = [];
-                    fs.readdir("./strg/document/", (erro, pdfs) => {
-                        if (erro) {
-                            console.log("erro");
-                        }
-
-                        buffer = fs.readFileSync("./strg/document/" + pdfs[Math.floor(Math.random() * pdfs.length)])
-                        client.sendMessage(from, buffer, document, {
-                            mimetype: 'application/pdf',
-                            quoted: mek,
-                            ptt: true
-                        })
-                    });
-                    break
-
-                case 'gapp':
-                    namastc = body.slice(5).trim()
-                    buffer = fs.readFileSync(`./strg/document/apps/animes/${namastc}.apk`)
-                    client.sendMessage(from, buffer, document, {
-                        mimetype: 'application/apk',
-                        quoted: mek,
-                        ptt: true
+                case 'rankadd':
+                    if (!isOwner) return reply('Apenas o Dono pode usar esse comando')
+                    fs.writeFileSync('./strg/teste.json', JSON.stringify(teste))
+                    client.sendMessage(from, `Aúdio salvo com sucesso! digite ${prefix}audlist para ver a lista de áudios salvos`, MessageType.text, {
+                        quoted: mek
                     })
                     break
 
-                case 'appsanime':
-                    teks = '┏━━❉ *Lista de Apps* ❉━━\n\n'
-                    for (let awokwkwk of appanime) {
-                        teks += `- ${awokwkwk}\n`
+                case 'addaud':
+                    if (!isOwner) return reply('Apenas o Dono pode usar esse comando')
+                    if (!isQuotedAudio) return reply('Marque o áudio e coloque o nome dele!')
+                    svst = body.slice(7)
+                    if (!svst) return reply('Qual é o nome do áudio??')
+                    boij = JSON.parse(JSON.stringify(mek).replace('quotedM', 'm')).message.extendedTextMessage.contextInfo
+                    delb = await client.downloadMediaMessage(boij)
+                    audionye.push(`${svst}`)
+                    fs.writeFileSync(`./strg/audio/${svst}.mp3`, delb)
+                    fs.writeFileSync('./strg/audio.json', JSON.stringify(audionye))
+                    client.sendMessage(from, `Aúdio salvo com sucesso! digite ${prefix}audlist para ver a lista de áudios salvos`, MessageType.text, {
+                        quoted: mek
+                    })
+                    break
+
+                case 'nhpdf':
+                    reply("Em andamento");
+                    break
+
+                case 'nhentai':
+                    if(/^\d+$/.test(args) === true){
+                        img_path = ""
+                        api.getBook(args).then(book => {
+                            (download_img(api.getImageURL(book.cover), 'cover', (path) => {
+                                hentai_info = `┏━━❉ *${book.title['pretty']}* ❉━━\n\nTags: \n -`
+                                for(var i = 0; i < 10; i++){
+                                    hentai_info = hentai_info + (book.tags[i].name) + ", "
+                                }
+                                hentai_info = hentai_info + "\nNumero de páginas: " + book.pages.length
+                                hentai_info = hentai_info + "\nLink: " + "nhentai.net/g/" + args
+                                console.log(hentai_info)
+                                buffer = fs.readFileSync(path)
+                                client.sendMessage(from, buffer, image, {
+                                    mimetype: 'image/png',
+                                    quoted: mek,
+                                    ptt: true,
+                                    caption: hentai_info
+                                })
+                                fs.unlinkSync(path)
+                            }))
+                        })
                     }
-                    teks += `\n*Total: ${appanime.length}*`
-                    client.sendMessage(from, teks.trim(), extendedText, {
-                        quoted: mek,
-                        contextInfo: {
-                            "mentionedJid": appanime
+                    break
+
+                case 'trap1':
+                    list_pdf = [];
+                    fs.readdir("./strg/image/trap/", (erro, pdfs) => {
+                        if (erro) {
+                            console.log("erro");
                         }
-                    })
+
+                        buffer = fs.readFileSync("./strg/image/trap/" + pdfs[Math.floor(Math.random() * pdfs.length)])
+                        client.sendMessage(from, buffer, image, {
+                            mimetype: 'image/png',
+                            quoted: mek,
+                            ptt: true
+                        })
+                    });
+                    break
+
+                case 'trap2':
+                    list_pdf = [];
+                    fs.readdir("./strg/image/trap2/", (erro, pdfs) => {
+                        if (erro) {
+                            console.log("erro");
+                        }
+
+                        buffer = fs.readFileSync("./strg/image/trap2/" + pdfs[Math.floor(Math.random() * pdfs.length)])
+                        client.sendMessage(from, buffer, image, {
+                            mimetype: 'image/png',
+                            quoted: mek,
+                            ptt: true
+                        })
+                    });
                     break
 
                 case 'gtrap':
@@ -551,6 +682,41 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
                     })
                     break
 
+                case 'clear':
+
+                    if (!isOwner) return reply('Apenas o Dono pode usar esse comando')
+
+                    anu = await client.chats.all()
+                    client.setMaxListeners(25)
+                    for (let _ of anu) {
+                        client.deleteChat(_.jid)
+                    }
+                    reply('Excluido todos os chats com sucesso')
+                    break
+
+                case 'bc':
+                    if (!isOwner) return reply('Apenas o Dono pode usar esse comando')
+
+                    if (args.length < 1) return reply('.......')
+                    text_to_brd = `[ TRANSMISSÃO DE AVISO ]\n\n${body.slice(4)}`
+                    anu = await client.chats.all()
+                    if (isMedia && !mek.message.videoMessage || isQuotedImage) {
+                        const encmedia = isQuotedImage ? JSON.parse(JSON.stringify(mek).replace('quotedM', 'm')).message.extendedTextMessage.contextInfo : mek
+                        buff = await client.downloadMediaMessage(encmedia)
+                        for (let _ of anu) {
+                            client.sendMessage(_.jid, buff, image, {
+                                caption: text_to_brd
+                            })
+                        }
+                        reply('Transmissão enviada com sucesso')
+                    } else {
+                        for (let _ of anu) {
+                            sendMess(_.jid, text_to_brd)
+                        }
+                        reply('Transmissão enviada com sucesso')
+                    }
+                    break
+
                 case 'apagar':
                 case 'del':
                     if (!isGroup) return reply(mess.only.group)
@@ -596,7 +762,6 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
                     break
 
                 case 'ping':
-                    if (!isGroup) return reply(mess.only.group)
                     const timestamp = speed();
                     const latensi = speed() - timestamp
                     client.updatePresence(from, Presence.composing)
@@ -759,14 +924,14 @@ _O uso do *Bom Senso* é e sempre será bem vindo aqui!_
                     if (mek.message.extendedTextMessage === undefined || mek.message.extendedTextMessage === null) return reply('Use o comando novamente e marque quem quer que eu remova')
                     mentioned = mek.message.extendedTextMessage.contextInfo.mentionedJid
                     if (mentioned.length > 1) {
-                        teks = 'Foi removido do Reino:\n'
+                        teks = 'Foi removido do grupo:\n'
                         for (let _ of mentioned) {
                             teks += `@${_.split('@')[0]}\n`
                         }
                         mentions(teks, mentioned, true)
                         client.groupRemove(from, mentioned)
                     } else {
-                        mentions(`Foi removido do Reino : @${mentioned[0].split('@')[0]}`, mentioned, true)
+                        mentions(`Foi removido do grupo: @${mentioned[0].split('@')[0]}`, mentioned, true)
                         client.groupRemove(from, mentioned)
                     }
                     break
@@ -837,15 +1002,6 @@ https://chat.whatsapp.com/I90BVZGmMP42fntOYY8n7J
 ◇───────◇──────◇`)
                     break
 
-                case 'viajante':
-                    namastc = body.slice(9)
-                    buffer = fs.readFileSync(`./strg/image/zoro.jpeg`)
-                    client.sendMessage(from, buffer, image, {
-                        quoted: mek,
-                        caption: `Result From DDatabas: zoro.jpeg`
-                    })
-                    break
-
                 case 'parceiros':
                     if (!isGroup) return reply(mess.only.group)
                     if (!isGroupAdmins) return reply(mess.only.admin)
@@ -894,6 +1050,24 @@ https://chat.whatsapp.com/I90BVZGmMP42fntOYY8n7J
                     }
                     break
 
+                case 'draw':
+                    if (!isGroup) return reply(mess.only.group)
+                    if (!isGroupAdmins) return reply(mess.only.admin)
+                    if (args.length < 1) return reply('Hmmmm')
+                    if (Number(args[0]) === 1) {
+                        if (isDraw) return reply('Welcome já está ativado!')
+                        draw.push(from)
+                        fs.writeFileSync('./src/draw.json', JSON.stringify(draw))
+                        reply('A mensagem de boas vindas foi ligada!')
+                    } else if (Number(args[0]) === 0) {
+                        draw.splice(from, 1)
+                        fs.writeFileSync('./src/draw.json', JSON.stringify(draw))
+                        reply('A mensagem de boas vindas foi desligada!')
+                    } else {
+                        reply('A mensagem de boas vindas foi ligada!')
+                    }
+                    break
+
                 case 'clone':
                     if (!isGroup) return reply(mess.only.group)
                     if (!isGroupAdmins) return reply(mess.only.admin)
@@ -932,16 +1106,14 @@ https://chat.whatsapp.com/I90BVZGmMP42fntOYY8n7J
                     break
 
                 case 'newpack':
-                    /*if(!isOwner){
+                    if (!isOwner) {
                         reply("Apenas o dono do bot pode usar este comando!")
-                    }*/
-                    if(args.length < 2){
+                    } else if (args.length < 2) {
                         reply("Por favor, envie o nome do pacote e o autor!")
-                    }
-                    else {
+                    } else {
                         let packname = args[0]
                         let author_name = args[1]
-                        if(fs.existsSync('./src/sticker_packages_names.json')){
+                        if (fs.existsSync('./src/sticker_packages_names.json')) {
                             sticker_packages_names = JSON.parse(fs.readFileSync('./src/sticker_packages_names.json'))
                             sticker_keys = Object.keys(sticker_packages_names);
                             j = parseInt(sticker_keys[sticker_keys.length - 1]) + 1;
@@ -963,21 +1135,21 @@ https://chat.whatsapp.com/I90BVZGmMP42fntOYY8n7J
                 case 'f':
                 case 'sticker':
                     package = null
-                    if (args.length > 0){
+                    if (args.length > 0) {
                         packnames = JSON.parse(fs.readFileSync("./src/sticker_packages_names.json"))
                         obj_keys = Object.keys(packnames)
-                        for(let i = 0; i < obj_keys.length; i++){
+                        for (let i = 0; i < obj_keys.length; i++) {
                             k = obj_keys[i]
                             archived = packnames[k]
-                            if(archived[0] == args[0]){
+                            if (archived[0] == args[0]) {
                                 package = archived
-                            }   
+                            }
                         }
                     }
-                        
+
                     author = "mogumogu"
                     packname = "random"
-                    if(package !== null){
+                    if (package !== null) {
                         author = package[1]
                         packname = package[0]
                     }
@@ -1000,9 +1172,11 @@ https://chat.whatsapp.com/I90BVZGmMP42fntOYY8n7J
                                 console.log("finalizando 1")
                                 exec(`webpmux -set exif ${addMetadata(packname, author)} ${ran} -o ${ran}`, async (error) => {
                                     if (error) return reply(mess.error.stick)
-                                    client.sendMessage(from, fs.readFileSync(ran), sticker, {quoted: mek})
-                                    fs.unlinkSync(media)    
-                                    fs.unlinkSync(ran)  
+                                    client.sendMessage(from, fs.readFileSync(ran), sticker, {
+                                        quoted: mek
+                                    })
+                                    fs.unlinkSync(media)
+                                    fs.unlinkSync(ran)
                                 })
                             })
                             .addOutputOptions([`-vcodec`, `libwebp`, `-vf`, `scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15, pad=320:320:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse`])
@@ -1025,12 +1199,14 @@ https://chat.whatsapp.com/I90BVZGmMP42fntOYY8n7J
                                 reply(`❌ Falhou, no momento da conversão ${tipe} para o adesivo`)
                             })
                             .on('end', function() {
-    
+
                                 exec(`webpmux -set exif ${addMetadata(packname, author)} ${ran} -o ${ran}`, async (error) => {
                                     if (error) return reply(mess.error.stick)
-                                    client.sendMessage(from, fs.readFileSync(ran), sticker, {quoted: mek})
-                                    fs.unlinkSync(media)    
-                                    fs.unlinkSync(ran)  
+                                    client.sendMessage(from, fs.readFileSync(ran), sticker, {
+                                        quoted: mek
+                                    })
+                                    fs.unlinkSync(media)
+                                    fs.unlinkSync(ran)
                                 })
                             })
                             .addOutputOptions([`-vcodec`, `libwebp`, `-vf`, `scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15, pad=320:320:-1:-1:color=white@0.0, split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse`])
